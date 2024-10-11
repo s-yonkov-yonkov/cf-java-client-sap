@@ -19,6 +19,9 @@ import java.util.Map;
 @Value.Immutable
 public abstract class RawCloudApplication extends RawCloudEntity<CloudApplication> {
 
+    public static final String BUILDPACKS = "buildpacks";
+    public static final String STACK = "stack";
+
     public abstract Application getApplication();
 
     public abstract Derivable<CloudSpace> getSpace();
@@ -42,10 +45,12 @@ public abstract class RawCloudApplication extends RawCloudEntity<CloudApplicatio
 
     private static Lifecycle parseLifecycle(org.cloudfoundry.client.v3.Lifecycle lifecycle) {
         Map<String, Object> data = new HashMap<>();
-        if (lifecycle.getType() == org.cloudfoundry.client.v3.LifecycleType.BUILDPACK) {
+        org.cloudfoundry.client.v3.LifecycleType lifecycleType = lifecycle.getType();
+
+        if (lifecycleType == org.cloudfoundry.client.v3.LifecycleType.BUILDPACK || lifecycleType == org.cloudfoundry.client.v3.LifecycleType.CNB) {
             var buildpackData = (BuildpackData) lifecycle.getData();
-            data.put("buildpacks", buildpackData.getBuildpacks());
-            data.put("stack", buildpackData.getStack());
+            data.put(BUILDPACKS, buildpackData.getBuildpacks());
+            data.put(STACK, buildpackData.getStack());
         }
         return ImmutableLifecycle.builder()
                                  .type(LifecycleType.valueOf(lifecycle.getType()

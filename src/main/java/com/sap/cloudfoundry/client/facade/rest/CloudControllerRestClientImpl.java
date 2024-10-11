@@ -312,7 +312,22 @@ public class CloudControllerRestClientImpl implements CloudControllerRestClient 
     }
 
     private Lifecycle buildApplicationLifecycle(Staging staging) {
-        return staging.getDockerInfo() != null ? createDockerLifecycle() : createBuildpackLifecycle(staging);
+        com.sap.cloudfoundry.client.facade.domain.LifecycleType lifecycleType= staging.getLifecycleType();
+        return switch (lifecycleType) {
+            case CNB -> createBuildpackBasedLifecycle(staging, LifecycleType.CNB);
+            case DOCKER -> createDockerLifecycle();
+            case BUILDPACK -> createBuildpackBasedLifecycle(staging, LifecycleType.BUILDPACK);
+            case KPACK -> throw new UnsupportedOperationException("The KPACK lifecycle type is not supported.");
+        };
+
+    }
+
+    private Lifecycle createBuildpackBasedLifecycle(Staging staging, LifecycleType lifecycleType) {
+        BuildpackData buildpackData = createBuildpackData(staging);
+        return Lifecycle.builder()
+                .type(lifecycleType)
+                .data(buildpackData)
+                .build();
     }
 
     private Lifecycle createDockerLifecycle() {
@@ -320,14 +335,6 @@ public class CloudControllerRestClientImpl implements CloudControllerRestClient 
                         .type(LifecycleType.DOCKER)
                         .data(DockerData.builder()
                                         .build())
-                        .build();
-    }
-
-    private Lifecycle createBuildpackLifecycle(Staging staging) {
-        BuildpackData buildpackData = createBuildpackData(staging);
-        return Lifecycle.builder()
-                        .type(LifecycleType.BUILDPACK)
-                        .data(buildpackData)
                         .build();
     }
 
