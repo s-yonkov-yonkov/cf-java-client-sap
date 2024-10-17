@@ -148,6 +148,8 @@ import org.cloudfoundry.client.v3.tasks.GetTaskRequest;
 import org.cloudfoundry.client.v3.tasks.ListTasksRequest;
 import org.cloudfoundry.client.v3.tasks.Task;
 import org.cloudfoundry.util.PaginationUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -231,6 +233,8 @@ public class CloudControllerRestClientImpl implements CloudControllerRestClient 
     private CloudSpace target; // optional, as some operations do not require a targeted space
     private CloudFoundryClient delegate;
 
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
+
     /**
      * Only for unit tests. This works around the fact that the initialize method is called within the constructor and hence can not be
      * overloaded, making it impossible to write unit tests that don't trigger network calls.
@@ -312,14 +316,14 @@ public class CloudControllerRestClientImpl implements CloudControllerRestClient 
     }
 
     private Lifecycle buildApplicationLifecycle(Staging staging) {
-        com.sap.cloudfoundry.client.facade.domain.LifecycleType lifecycleType= staging.getLifecycleType();
-        return switch (lifecycleType) {
-            case CNB -> createBuildpackBasedLifecycle(staging, LifecycleType.CNB);
-            case DOCKER -> createDockerLifecycle();
-            case BUILDPACK -> createBuildpackBasedLifecycle(staging, LifecycleType.BUILDPACK);
-            case KPACK -> throw new UnsupportedOperationException("The KPACK lifecycle type is not supported.");
-        };
+        LifecycleType lifecycleType= LifecycleType.valueOf(staging.getLifecycleType().name());
+        logger.info("CNB - building lifecycle - Type - " + lifecycleType);
 
+        if (staging.getDockerInfo() != null) {
+            return createDockerLifecycle();
+        } else {
+            return createBuildpackBasedLifecycle(staging, lifecycleType);
+        }
     }
 
     private Lifecycle createBuildpackBasedLifecycle(Staging staging, LifecycleType lifecycleType) {
