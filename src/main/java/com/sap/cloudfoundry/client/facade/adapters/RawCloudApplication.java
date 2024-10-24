@@ -1,6 +1,11 @@
 package com.sap.cloudfoundry.client.facade.adapters;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.cloudfoundry.client.v3.BuildpackData;
+import org.cloudfoundry.client.v3.CnbData;
+import org.cloudfoundry.client.v3.LifecycleData;
 import org.cloudfoundry.client.v3.applications.Application;
 import org.cloudfoundry.client.v3.applications.ApplicationState;
 import org.immutables.value.Value;
@@ -12,9 +17,6 @@ import com.sap.cloudfoundry.client.facade.domain.ImmutableCloudApplication;
 import com.sap.cloudfoundry.client.facade.domain.ImmutableLifecycle;
 import com.sap.cloudfoundry.client.facade.domain.Lifecycle;
 import com.sap.cloudfoundry.client.facade.domain.LifecycleType;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Value.Immutable
 public abstract class RawCloudApplication extends RawCloudEntity<CloudApplication> {
@@ -47,17 +49,31 @@ public abstract class RawCloudApplication extends RawCloudEntity<CloudApplicatio
         Map<String, Object> data = new HashMap<>();
         org.cloudfoundry.client.v3.LifecycleType lifecycleType = lifecycle.getType();
 
-        if (lifecycleType == org.cloudfoundry.client.v3.LifecycleType.BUILDPACK || lifecycleType == org.cloudfoundry.client.v3.LifecycleType.CNB) {
-            var buildpackData = (BuildpackData) lifecycle.getData();
-            data.put(BUILDPACKS, buildpackData.getBuildpacks());
-            data.put(STACK, buildpackData.getStack());
+        if (isBuildpackOrCnb(lifecycleType)) {
+            addLifecycleData(data, lifecycle.getData());
         }
+
         return ImmutableLifecycle.builder()
                                  .type(LifecycleType.valueOf(lifecycle.getType()
                                                                       .toString()
                                                                       .toUpperCase()))
                                  .data(data)
                                  .build();
+    }
+
+    private static boolean isBuildpackOrCnb(org.cloudfoundry.client.v3.LifecycleType lifecycleType) {
+        return lifecycleType == org.cloudfoundry.client.v3.LifecycleType.BUILDPACK
+            || lifecycleType == org.cloudfoundry.client.v3.LifecycleType.CNB;
+    }
+
+    private static void addLifecycleData(Map<String, Object> data, LifecycleData lifecycleData) {
+        if (lifecycleData instanceof BuildpackData buildpackData) {
+            data.put(BUILDPACKS, buildpackData.getBuildpacks());
+            data.put(STACK, buildpackData.getStack());
+        } else if (lifecycleData instanceof CnbData cnbData) {
+            data.put(BUILDPACKS, cnbData.getBuildpacks());
+            data.put(STACK, cnbData.getStack());
+        }
     }
 
 }
